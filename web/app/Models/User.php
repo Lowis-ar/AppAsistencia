@@ -28,6 +28,8 @@ class User extends Authenticatable
         'role',
         'department_id',
         'residential_zone',
+        'latitude',
+        'longitude',
     ];
 
     /**

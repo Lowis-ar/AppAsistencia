@@ -39,6 +39,7 @@ fun AsistenciaApp() {
     // We hold the selected coordinates here so they can be shared between the Map and the Register screens
     var tempLat by remember { mutableStateOf<Double?>(null) }
     var tempLng by remember { mutableStateOf<Double?>(null) }
+    var tempAddress by remember { mutableStateOf<String?>(null) }
 
     NavHost(navController = navController, startDestination = "main") {
         composable("main") {
@@ -64,6 +65,7 @@ fun AsistenciaApp() {
                     // reset temp coords when navigating to register
                     tempLat = null
                     tempLng = null
+                    tempAddress = null
                     navController.navigate("register") 
                 },
                 onLogout = { 
@@ -79,16 +81,18 @@ fun AsistenciaApp() {
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToMapPicker = { navController.navigate("map") },
                 selectedLat = tempLat,
-                selectedLng = tempLng
+                selectedLng = tempLng,
+                selectedAddress = tempAddress
             )
         }
 
         composable("map") {
             MapPickerScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onLocationSelected = { lat, lng ->
+                onLocationSelected = { lat, lng, address ->
                     tempLat = lat
                     tempLng = lng
+                    tempAddress = address
                     navController.popBackStack() // Go back to register screen
                 }
             )

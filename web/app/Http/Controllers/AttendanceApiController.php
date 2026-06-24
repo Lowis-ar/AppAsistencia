@@ -107,6 +107,13 @@ class AttendanceApiController extends Controller
             'longitude' => 'required|numeric',
         ]);
 
+        if (!is_numeric($request->carnet)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El código QR escaneado no es válido (debe ser el ID numérico del empleado).',
+            ], 400);
+        }
+
         $user = User::find($request->carnet);
 
         if (! $user) {

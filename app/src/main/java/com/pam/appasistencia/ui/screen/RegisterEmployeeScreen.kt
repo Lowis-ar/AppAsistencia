@@ -21,14 +21,24 @@ fun RegisterEmployeeScreen(
     onNavigateToMapPicker: () -> Unit,
     selectedLat: Double?,
     selectedLng: Double?,
+    selectedAddress: String?,
     viewModel: AdminViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     var fullName by remember { mutableStateOf("") }
     var zone by remember { mutableStateOf("") }
-    var department by remember { mutableStateOf("") }
+    
+    val departments = listOf("Informática", "Contabilidad", "Recursos Humanos", "Ventas", "Administración", "Producción")
+    var department by remember { mutableStateOf(departments[0]) }
+    var dropdownExpanded by remember { mutableStateOf(false) }
 
     val adminState by viewModel.adminState.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(selectedAddress) {
+        if (selectedAddress != null) {
+            zone = selectedAddress
+        }
+    }
 
     LaunchedEffect(adminState) {
         when (adminState) {
@@ -80,18 +90,42 @@ fun RegisterEmployeeScreen(
             OutlinedTextField(
                 value = zone,
                 onValueChange = { zone = it },
-                label = { Text("Zona de Residencia") },
+                label = { Text("Dirección / Residencia (Se llena desde el Mapa)") },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                singleLine = true
+                singleLine = false,
+                maxLines = 3
             )
 
-            OutlinedTextField(
-                value = department,
-                onValueChange = { department = it },
-                label = { Text("Departamento / Área") },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                singleLine = true
-            )
+            ExposedDropdownMenuBox(
+                expanded = dropdownExpanded,
+                onExpandedChange = { dropdownExpanded = !dropdownExpanded },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
+            ) {
+                OutlinedTextField(
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    readOnly = true,
+                    value = department,
+                    onValueChange = {},
+                    label = { Text("Departamento / Área") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                )
+                ExposedDropdownMenu(
+                    expanded = dropdownExpanded,
+                    onDismissRequest = { dropdownExpanded = false }
+                ) {
+                    departments.forEach { selectionOption ->
+                        DropdownMenuItem(
+                            text = { Text(selectionOption) },
+                            onClick = {
+                                department = selectionOption
+                                dropdownExpanded = false
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                        )
+                    }
+                }
+            }
 
             // Location picker
             Card(
@@ -105,7 +139,7 @@ fun RegisterEmployeeScreen(
                     Icon(Icons.Default.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Residencia (Opcional)", style = MaterialTheme.typography.labelLarge)
+                        Text("Residencia (Requerido)", style = MaterialTheme.typography.labelLarge)
                         if (selectedLat != null && selectedLng != null) {
                             Text("Lat: ${"%.4f".format(selectedLat)}\nLng: ${"%.4f".format(selectedLng)}", style = MaterialTheme.typography.bodyMedium)
                         } else {
@@ -123,7 +157,7 @@ fun RegisterEmployeeScreen(
             Button(
                 onClick = { viewModel.registerEmployee(fullName, department, zone, selectedLat, selectedLng) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                enabled = adminState != AdminState.Loading && fullName.isNotBlank() && zone.isNotBlank() && department.isNotBlank()
+                enabled = adminState != AdminState.Loading && fullName.isNotBlank() && zone.isNotBlank() && department.isNotBlank() && selectedLat != null
             ) {
                 if (adminState == AdminState.Loading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)

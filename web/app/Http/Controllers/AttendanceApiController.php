@@ -3,230 +3,147 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\Department;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use App\Models\User;
 
 class AttendanceApiController extends Controller
 {
-    /**
-     * Códigos QR autorizados para registrar asistencia.
-     * En producción, estos deberían estar en la base de datos (tabla 'locations').
-     */
-    private const AUTHORIZED_QR_CODES = [
-        'HQ_MAIN_OFFICE',
-        'SUCURSAL_NORTE',
-        'SUCURSAL_SUR',
-        'BODEGA_CENTRAL',
-    ];
-
     // =========================================================================
-    // POST /api/login
+    // POST /api/auth/login
     // =========================================================================
-
-    /**
-     * Autentica al usuario y retorna un token de Sanctum.
-     */
     public function login(Request $request): JsonResponse
     {
+        // En este modelo, el Administrador usa su 'username' o 'email' para iniciar sesión
         $request->validate([
-            'email'    => 'required|email',
+            'username' => 'required|string',
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->username)
+                    ->orWhere('name', $request->username)
+                    ->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Las credenciales proporcionadas son incorrectas.'],
-            ]);
+        // Validamos que sea admin
+        if (! $user || ! Hash::check($request->password, $user->password) || $user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Credenciales incorrectas o no tienes permisos de administrador.',
+            ], 401);
         }
 
-        // Revocar tokens anteriores (un solo token activo por usuario)
         $user->tokens()->delete();
-
-        $token = $user->createToken('mobile-app-token')->plainTextToken;
+        $token = $user->createToken('admin-token')->plainTextToken;
 
         return response()->json([
             'success' => true,
             'message' => 'Inicio de sesión exitoso.',
-            'data'    => [
-                'user'  => [
-                    'id'               => $user->id,
-                    'name'             => $user->name,
-                    'email'            => $user->email,
-                    'role'             => $user->role,
-                    'department'       => $user->department?->name,
-                    'residential_zone' => $user->residential_zone,
-                ],
-                'token' => $token,
-            ],
+            'token'   => $token,
         ], 200);
     }
 
     // =========================================================================
-    // POST /api/logout
+    // POST /api/employees
     // =========================================================================
-
-    /**
-     * Revoca el token actual del usuario autenticado.
-     */
-    public function logout(Request $request): JsonResponse
-    {
-        $request->user()->currentAccessToken()->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Sesión cerrada correctamente.',
-        ], 200);
-    }
-
-    // =========================================================================
-    // GET /api/user
-    // =========================================================================
-
-    /**
-     * Retorna los datos del usuario autenticado.
-     */
-    public function me(Request $request): JsonResponse
-    {
-        $user = $request->user()->load('department');
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id'               => $user->id,
-                'name'             => $user->name,
-                'email'            => $user->email,
-                'role'             => $user->role,
-                'department'       => $user->department?->name,
-                'residential_zone' => $user->residential_zone,
-            ],
-        ]);
-    }
-
-    // =========================================================================
-    // POST /api/attendance/register
-    // =========================================================================
-
-    /**
-     * Registra una asistencia (check_in o check_out).
-     *
-     * Payload esperado:
-     * {
-     *   "qr_code":  "HQ_MAIN_OFFICE",
-     *   "type":     "check_in" | "check_out",
-     *   "latitude":  14.0818,
-     *   "longitude": -87.2068
-     * }
-     */
-    public function register(Request $request): JsonResponse
+    public function registerEmployee(Request $request): JsonResponse
     {
         $request->validate([
-            'qr_code'   => 'required|string',
-            'type'      => 'required|in:check_in,check_out',
-            'latitude'  => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
+            'fullName'     => 'required|string',
+            'department'   => 'required|string',
+            'zone'         => 'required|string',
+            'residenceLat' => 'nullable|numeric',
+            'residenceLng' => 'nullable|numeric',
         ]);
 
-        $user = $request->user();
-        $expectedQrCode = 'USER_QR_' . $user->id;
+        // Buscamos o creamos el departamento
+        $department = Department::firstOrCreate(['name' => $request->department]);
 
-        // 1. Validar QR (Código personal o de sucursal)
-        if ($request->qr_code !== $expectedQrCode && !in_array($request->qr_code, self::AUTHORIZED_QR_CODES)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Código QR inválido o no pertenece a tu usuario.',
-            ], 403);
-        }
-        $today = now()->toDateString();
-        $nowTime = now()->toTimeString();
-
-        // 2. Validar lógica check_in / check_out
-        $lastRecord = Attendance::where('user_id', $user->id)
-            ->where('date', $today)
-            ->orderBy('time', 'desc')
-            ->first();
-
-        if ($request->type === 'check_in') {
-            // No se puede hacer check_in si ya hay uno activo (sin check_out)
-            if ($lastRecord && $lastRecord->type === 'check_in') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ya tienes una entrada registrada hoy. Primero registra tu salida.',
-                ], 409);
-            }
-        }
-
-        if ($request->type === 'check_out') {
-            // No se puede hacer check_out sin un check_in previo
-            if (! $lastRecord || $lastRecord->type === 'check_out') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No hay una entrada registrada hoy. Primero registra tu entrada.',
-                ], 409);
-            }
-        }
-
-        // 3. Registrar asistencia
-        $attendance = Attendance::create([
-            'user_id'   => $user->id,
-            'type'      => $request->type,
-            'date'      => $today,
-            'time'      => $nowTime,
-            'latitude'  => $request->latitude,
-            'longitude' => $request->longitude,
-            'qr_code'   => $request->qr_code,
+        // Creamos al empleado
+        $employee = User::create([
+            'name'             => $request->fullName,
+            'email'            => strtolower(str_replace(' ', '.', $request->fullName)) . rand(10,99) . '@asistencia.com',
+            'password'         => Hash::make('12345678'), // default pass
+            'role'             => 'employee',
+            'department_id'    => $department->id,
+            'residential_zone' => $request->zone,
+            'latitude'         => $request->residenceLat,
+            'longitude'        => $request->residenceLng,
         ]);
-
-        $typeLabel = $request->type === 'check_in' ? 'entrada' : 'salida';
 
         return response()->json([
             'success' => true,
-            'message' => "Tu {$typeLabel} ha sido registrada correctamente.",
+            'message' => 'Empleado registrado exitosamente.',
             'data'    => [
-                'id'        => $attendance->id,
-                'type'      => $attendance->type,
-                'date'      => $attendance->date->format('Y-m-d'),
-                'time'      => $attendance->time,
-                'location'  => $attendance->google_maps_url,
-                'qr_code'   => $attendance->qr_code,
-            ],
+                'id' => $employee->id,
+            ]
         ], 201);
     }
 
     // =========================================================================
-    // GET /api/attendance/status
+    // GET /api/employees
     // =========================================================================
-
-    /**
-     * Retorna el estado actual del usuario (si está dentro o fuera).
-     */
-    public function status(Request $request): JsonResponse
+    public function listEmployees(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $today = now()->toDateString();
+        $employees = User::with('department')->where('role', 'employee')->get();
+        return response()->json([
+            'success' => true,
+            'data'    => $employees
+        ]);
+    }
 
+    // =========================================================================
+    // POST /api/attendance
+    // =========================================================================
+    public function registerAttendance(Request $request): JsonResponse
+    {
+        // La App manda 'carnet' (que ahora es el user ID), 'checkTime', 'latitude', 'longitude'
+        $request->validate([
+            'carnet'    => 'required|string', // QR content = User ID
+            'checkTime' => 'required|string',
+            'latitude'  => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
+        $user = User::find($request->carnet);
+
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no encontrado con el código escaneado.',
+            ], 404);
+        }
+
+        $today = now()->toDateString();
+        $nowTime = now()->toTimeString();
+
+        // Determinar si es Entrada o Salida
         $lastRecord = Attendance::where('user_id', $user->id)
             ->where('date', $today)
             ->orderBy('time', 'desc')
             ->first();
 
-        $isCheckedIn = $lastRecord && $lastRecord->type === 'check_in';
+        // Si el último registro fue 'check_in', el siguiente es 'check_out'
+        $type = ($lastRecord && $lastRecord->type === 'check_in') ? 'check_out' : 'check_in';
+
+        $attendance = Attendance::create([
+            'user_id'   => $user->id,
+            'type'      => $type,
+            'date'      => $today,
+            'time'      => $nowTime,
+            'latitude'  => $request->latitude,
+            'longitude' => $request->longitude,
+            'qr_code'   => $request->carnet, // el QR escaneado (ID)
+        ]);
+
+        $typeLabel = $type === 'check_in' ? 'Entrada' : 'Salida';
 
         return response()->json([
             'success' => true,
-            'data'    => [
-                'is_checked_in' => $isCheckedIn,
-                'last_record'   => $lastRecord ? [
-                    'type' => $lastRecord->type,
-                    'time' => $lastRecord->time,
-                    'date' => $lastRecord->date->format('Y-m-d'),
-                ] : null,
-            ],
-        ]);
+            'message' => "{$typeLabel} registrada con éxito — {$user->name}",
+            'data'    => $attendance
+        ], 201);
     }
 }

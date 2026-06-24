@@ -5,44 +5,21 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes — Sistema de Control de Asistencia
+| API Routes
 |--------------------------------------------------------------------------
 |
-| Estas rutas son consumidas por la aplicación móvil.
-| La autenticación se maneja via Laravel Sanctum (Bearer Token).
+| Estas rutas son consumidas por la aplicación móvil (Modelo Quiosco).
 |
 */
 
-// -----------------------------------------------------------------------
-// Rutas públicas (sin autenticación)
-// -----------------------------------------------------------------------
+// Login del Administrador
+Route::post('/auth/login', [AttendanceApiController::class, 'login']);
 
-Route::post('/login', [AttendanceApiController::class, 'login'])
-    ->name('api.login');
+// Ruta Pública: Empleado escanea su QR (que contiene su ID)
+Route::post('/attendance', [AttendanceApiController::class, 'registerAttendance']);
 
-// -----------------------------------------------------------------------
-// Rutas protegidas (requieren Bearer Token de Sanctum)
-// -----------------------------------------------------------------------
-
+// Rutas protegidas (Requieren token del Administrador)
 Route::middleware('auth:sanctum')->group(function () {
-
-    // Información del usuario autenticado
-    Route::get('/user', [AttendanceApiController::class, 'me'])
-        ->name('api.user');
-
-    // Cerrar sesión (revocar token)
-    Route::post('/logout', [AttendanceApiController::class, 'logout'])
-        ->name('api.logout');
-
-    // Registro de asistencia
-    Route::prefix('attendance')->name('api.attendance.')->group(function () {
-
-        // Registrar check_in o check_out
-        Route::post('/register', [AttendanceApiController::class, 'register'])
-            ->name('register');
-
-        // Estado actual del usuario (¿está dentro o fuera?)
-        Route::get('/status', [AttendanceApiController::class, 'status'])
-            ->name('status');
-    });
+    Route::post('/employees', [AttendanceApiController::class, 'registerEmployee']);
+    Route::get('/employees', [AttendanceApiController::class, 'listEmployees']);
 });

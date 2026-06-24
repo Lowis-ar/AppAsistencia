@@ -12,6 +12,8 @@ return new class extends Migration
             $table->string('role')->default('employee')->after('email'); // 'admin' | 'employee'
             $table->foreignId('department_id')->nullable()->constrained('departments')->nullOnDelete()->after('role');
             $table->string('residential_zone')->nullable()->after('department_id');
+            $table->decimal('latitude', 10, 8)->nullable()->after('residential_zone');
+            $table->decimal('longitude', 11, 8)->nullable()->after('latitude');
         });
     }
 
@@ -19,7 +21,8 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['department_id']);
-            $table->dropColumn(['role', 'department_id', 'residential_zone']);
+            $table->dropColumn(['role', 'department_id', 'residential_zone', 'latitude', 'longitude']);
         });
     }
 };
+

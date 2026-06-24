@@ -319,6 +319,37 @@
 
         .spark-bar:hover { background: var(--accent); }
 
+        .btn-ghost:hover { background: var(--bg-sidebar); }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(17, 24, 39, 0.4); backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center; z-index: 1000;
+            opacity: 0; transition: opacity 0.2s ease;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-content {
+            background: var(--bg-card); border-radius: var(--radius-card);
+            padding: 2.5rem; max-width: 360px; width: 100%; position: relative;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: translateY(20px) scale(0.95); transition: all 0.2s ease;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0) scale(1); }
+        .modal-close {
+            position: absolute; top: 1rem; right: 1rem; background: transparent; border: none;
+            color: var(--text-muted); cursor: pointer; transition: color 0.2s; padding: 4px;
+        }
+        .modal-close:hover { color: var(--text-primary); }
+        .modal-body { text-align: center; }
+        .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: var(--text-secondary); font-size: 0.875rem; font-weight: 500; }
+        .detail-val { color: var(--text-primary); font-size: 0.9375rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .detail-header { margin-bottom: 1.5rem; }
+        .detail-title { font-weight: 800; font-size: 1.25rem; color: var(--text-primary); }
+        .detail-subtitle { font-size: 0.875rem; color: var(--text-secondary); margin-top: 4px; }
+
         .spark-bar[data-today="true"] {
             background: var(--accent);
         }
@@ -901,13 +932,6 @@
                             @endforeach
                         </select>
 
-                        <!-- Tipo -->
-                        <select name="type" class="filter-input select-field" id="select-type">
-                            <option value="">Entrada y Salida</option>
-                            <option value="check_in"  {{ request('type') === 'check_in'  ? 'selected' : '' }}>Solo Entradas</option>
-                            <option value="check_out" {{ request('type') === 'check_out' ? 'selected' : '' }}>Solo Salidas</option>
-                        </select>
-
                         <button type="submit" class="btn btn-primary" id="btn-filter">
                             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
@@ -915,7 +939,7 @@
                             Filtrar
                         </button>
 
-                        @if(request()->hasAny(['search','date_from','date_to','zone','type']))
+                        @if(request()->hasAny(['search','date_from','date_to','zone']))
                             <a href="{{ route('dashboard') }}" class="btn btn-ghost" id="btn-clear-filters">Limpiar</a>
                         @endif
                     </div>
@@ -927,64 +951,54 @@
                         <thead>
                             <tr>
                                 <th>EMPLEADO</th>
-                                <th>TIPO</th>
                                 <th>FECHA</th>
-                                <th>HORA</th>
                                 <th>DEPARTAMENTO</th>
                                 <th>ZONA</th>
                                 <th>UBICACIÓN</th>
+                                <th>DETALLES</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($attendances as $record)
+                                @php
+                                    $dateStr = \Carbon\Carbon::parse($record->date)->format('d/m/Y');
+                                    $inTime = $record->check_in_time ? \Carbon\Carbon::parse($record->check_in_time)->format('H:i') : '--:--';
+                                    $outTime = $record->check_out_time ? \Carbon\Carbon::parse($record->check_out_time)->format('H:i') : '--:--';
+                                    
+                                    $totalHoursStr = '--';
+                                    if ($record->check_in_time && $record->check_out_time) {
+                                        $inC = \Carbon\Carbon::parse($record->date . ' ' . $record->check_in_time);
+                                        $outC = \Carbon\Carbon::parse($record->date . ' ' . $record->check_out_time);
+                                        $diffMinutes = $inC->diffInMinutes($outC);
+                                        $hours = floor($diffMinutes / 60);
+                                        $minutes = $diffMinutes % 60;
+                                        $totalHoursStr = "{$hours}h {$minutes}m";
+                                    }
+                                @endphp
                                 <tr>
                                     <!-- Empleado -->
                                     <td>
                                         <div class="user-cell">
                                             <div class="user-avatar">
-                                                {{ strtoupper(substr($record->user->name ?? '?', 0, 2)) }}
+                                                {{ strtoupper(substr($record->user_name ?? '?', 0, 2)) }}
                                             </div>
                                             <div>
-                                                <div class="user-name">{{ $record->user->name ?? 'Sin nombre' }}</div>
-                                                <div class="user-email">#{{ $record->user->id }}</div>
+                                                <div class="user-name">{{ $record->user_name ?? 'Sin nombre' }}</div>
+                                                <div class="user-email">#{{ $record->u_id }}</div>
                                             </div>
                                         </div>
                                     </td>
 
-                                    <!-- Tipo -->
-                                    <td>
-                                        @if($record->type === 'check_in')
-                                            <span class="type-badge badge-checkin">
-                                                <svg width="10" height="10" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd"/>
-                                                </svg>
-                                                Entrada
-                                            </span>
-                                        @else
-                                            <span class="type-badge badge-checkout">
-                                                <svg width="10" height="10" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-3.707-8.707l3 3a1 1 0 001.414-1.414L9.414 9H13a1 1 0 100-2H9.414l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414z" clip-rule="evenodd"/>
-                                                </svg>
-                                                Salida
-                                            </span>
-                                        @endif
-                                    </td>
-
                                     <!-- Fecha -->
                                     <td style="font-variant-numeric: tabular-nums;">
-                                        {{ $record->date->format('d/m/Y') }}
-                                    </td>
-
-                                    <!-- Hora -->
-                                    <td style="font-variant-numeric: tabular-nums; font-weight: 600;">
-                                        {{ \Carbon\Carbon::parse($record->time)->format('H:i') }}
+                                        {{ $dateStr }}
                                     </td>
 
                                     <!-- Departamento -->
-                                    <td>{{ $record->user->department->name ?? '—' }}</td>
+                                    <td>{{ $record->department_name ?? '—' }}</td>
 
                                     <!-- Zona -->
-                                    <td>{{ $record->user->residential_zone ?? '—' }}</td>
+                                    <td>{{ $record->residential_zone ?? '—' }}</td>
 
                                     <!-- Ubicación: Google Maps -->
                                     <td>
@@ -994,7 +1008,6 @@
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 class="maps-btn"
-                                                id="maps-link-{{ $record->id }}"
                                             >
                                                 <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -1005,6 +1018,17 @@
                                         @else
                                             <span class="no-location">Sin ubicación</span>
                                         @endif
+                                    </td>
+
+                                    <!-- Detalles -->
+                                    <td>
+                                        <button class="btn btn-ghost" style="padding: 6px 12px; font-size: 0.8125rem;" 
+                                                onclick="openDetailsModal('{{ $record->user_name }}', '{{ $dateStr }}', '{{ $inTime }}', '{{ $outTime }}', '{{ $totalHoursStr }}')">
+                                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-top;">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Ver Detalles
+                                        </button>
                                     </td>
                                 </tr>
                             @empty
@@ -1053,9 +1077,62 @@
     <!-- /main -->
 
 </div>
+</div>
 <!-- /layout -->
 
+<!-- Modal de Detalles de Jornada -->
+<div class="modal-overlay" id="details-modal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeDetailsModal()">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <div class="modal-body">
+            <div class="detail-header">
+                <div class="detail-title" id="modal-user-name">Nombre Empleado</div>
+                <div class="detail-subtitle" id="modal-date">01/01/2026</div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">Hora de Entrada</div>
+                <div class="detail-val" id="modal-in-time" style="color: #10B981;">--:--</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Hora de Salida</div>
+                <div class="detail-val" id="modal-out-time" style="color: #F43F5E;">--:--</div>
+            </div>
+            <div class="detail-row" style="background: var(--bg-base); padding: 16px; border-radius: 12px; margin-top: 1rem; border: none;">
+                <div class="detail-label" style="color: var(--text-primary); font-weight: 700;">Total Trabajado</div>
+                <div class="detail-val" id="modal-total-hours" style="color: var(--accent); font-size: 1.125rem;">0h 0m</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    function openDetailsModal(userName, dateStr, inTime, outTime, totalHours) {
+        document.getElementById('modal-user-name').textContent = userName;
+        document.getElementById('modal-date').textContent = dateStr;
+        document.getElementById('modal-in-time').textContent = inTime;
+        document.getElementById('modal-out-time').textContent = outTime;
+        document.getElementById('modal-total-hours').textContent = totalHours;
+        
+        document.getElementById('details-modal').classList.add('active');
+    }
+
+    function closeDetailsModal() {
+        document.getElementById('details-modal').classList.remove('active');
+    }
+
+    document.getElementById('details-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeDetailsModal();
+    });
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeDetailsModal();
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
         const tableContainer = document.querySelector('.table-container');
         

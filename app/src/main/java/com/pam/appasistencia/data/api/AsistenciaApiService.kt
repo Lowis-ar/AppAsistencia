@@ -35,7 +35,7 @@ interface AsistenciaApiService {
     ): retrofit2.Response<Any>
 
     companion object {
-        private const val BASE_URL = "http://160.34.218.85:4000/"
+        private const val BASE_URL = "https://valves-latex-bosnia-buyers.trycloudflare.com/"
 
         fun create(): AsistenciaApiService {
             val logger = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }

@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust all proxies for Cloudflare Tunnel / Reverse Proxies
+        $middleware->trustProxies(at: '*');
+
         // Registrar el alias del middleware de admin
         $middleware->alias([
             'admin' => EnsureIsAdmin::class,

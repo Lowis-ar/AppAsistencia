@@ -25,13 +25,13 @@ fun MapPickerScreen(
     onLocationSelected: (Double, Double, String) -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    // Default location (e.g. city center)
-    val defaultLocation = LatLng(-13.6929, -89.2182) // San Salvador, El Salvador
+    // Default location (13°38'10.7"N 88°47'14.0"W)
+    val defaultLocation = LatLng(13.636306, -88.787222)
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(defaultLocation, 12f)
+        position = CameraPosition.fromLatLngZoom(defaultLocation, 15f)
     }
 
-    var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
+    var selectedLocation by remember { mutableStateOf<LatLng?>(defaultLocation) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 

@@ -28,40 +28,55 @@ class DashboardController extends Controller
         $sparklineData = $this->getSparklineData(7);
 
         // =========================================================
-        // 2. Tabla de registros con filtros
+        // 2. Tabla de registros con filtros (Agrupado por jornada)
         // =========================================================
-        $query = Attendance::with(['user.department'])
-            ->orderBy('date', 'desc')
-            ->orderBy('time', 'desc');
+        $query = DB::table('attendances')
+            ->join('users', 'attendances.user_id', '=', 'users.id')
+            ->leftJoin('departments', 'users.department_id', '=', 'departments.id')
+            ->select(
+                'attendances.user_id',
+                'attendances.date',
+                'users.id as u_id',
+                'users.name as user_name',
+                'users.email as user_email',
+                'users.residential_zone',
+                'departments.name as department_name',
+                DB::raw("MIN(CASE WHEN attendances.type = 'check_in' THEN attendances.time END) as check_in_time"),
+                DB::raw("MAX(CASE WHEN attendances.type = 'check_out' THEN attendances.time END) as check_out_time"),
+                DB::raw("MAX(CASE WHEN attendances.type = 'check_in' THEN CAST(attendances.latitude AS TEXT) END) as latitude"),
+                DB::raw("MAX(CASE WHEN attendances.type = 'check_in' THEN CAST(attendances.longitude AS TEXT) END) as longitude")
+            )
+            ->groupBy(
+                'attendances.user_id',
+                'attendances.date',
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.residential_zone',
+                'departments.name'
+            )
+            ->orderBy('attendances.date', 'desc')
+            ->orderBy('users.name', 'asc');
 
         // Filtro: búsqueda por nombre o ID
         if ($search = $request->input('search')) {
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%");
-                if (is_numeric($search)) {
-                    $q->orWhere('id', $search);
-                }
+            $query->where(function ($q) use ($search) {
+                $q->where('users.name', 'like', "%{$search}%")
+                  ->orWhere('users.id', $search);
             });
         }
 
         // Filtro: rango de fechas
         if ($dateFrom = $request->input('date_from')) {
-            $query->whereDate('date', '>=', $dateFrom);
+            $query->whereDate('attendances.date', '>=', $dateFrom);
         }
         if ($dateTo = $request->input('date_to')) {
-            $query->whereDate('date', '<=', $dateTo);
+            $query->whereDate('attendances.date', '<=', $dateTo);
         }
 
         // Filtro: zona residencial
         if ($zone = $request->input('zone')) {
-            $query->whereHas('user', function ($q) use ($zone) {
-                $q->where('residential_zone', 'ilike', "%{$zone}%");
-            });
-        }
-
-        // Filtro: tipo (check_in / check_out)
-        if ($type = $request->input('type')) {
-            $query->where('type', $type);
+            $query->where('users.residential_zone', 'like', "%{$zone}%");
         }
 
         $attendances = $query->paginate(20)->withQueryString();

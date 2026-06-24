@@ -37,8 +37,10 @@ class DashboardController extends Controller
         // Filtro: búsqueda por nombre o ID
         if ($search = $request->input('search')) {
             $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('id', $search);
+                $q->where('name', 'ilike', "%{$search}%");
+                if (is_numeric($search)) {
+                    $q->orWhere('id', $search);
+                }
             });
         }
 
@@ -53,7 +55,7 @@ class DashboardController extends Controller
         // Filtro: zona residencial
         if ($zone = $request->input('zone')) {
             $query->whereHas('user', function ($q) use ($zone) {
-                $q->where('residential_zone', 'like', "%{$zone}%");
+                $q->where('residential_zone', 'ilike', "%{$zone}%");
             });
         }
 

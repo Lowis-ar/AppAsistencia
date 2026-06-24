@@ -132,15 +132,16 @@ class AttendanceApiController extends Controller
             'longitude' => 'required|numeric|between:-180,180',
         ]);
 
-        // 1. Validar QR
-        if (! in_array($request->qr_code, self::AUTHORIZED_QR_CODES)) {
+        $user = $request->user();
+        $expectedQrCode = 'USER_QR_' . $user->id;
+
+        // 1. Validar QR (Código personal o de sucursal)
+        if ($request->qr_code !== $expectedQrCode && !in_array($request->qr_code, self::AUTHORIZED_QR_CODES)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Código QR no autorizado. Asegúrese de escanear el código del lugar correcto.',
+                'message' => 'Código QR inválido o no pertenece a tu usuario.',
             ], 403);
         }
-
-        $user = $request->user();
         $today = now()->toDateString();
         $nowTime = now()->toTimeString();
 

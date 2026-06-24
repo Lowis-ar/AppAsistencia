@@ -99,22 +99,28 @@ class AttendanceApiController extends Controller
     // =========================================================================
     public function registerAttendance(Request $request): JsonResponse
     {
-        // La App manda 'carnet' (que ahora es el user ID), 'checkTime', 'latitude', 'longitude'
+        // La App manda 'carnet' (que ahora es el user ID o USER_QR_<ID>), 'checkTime', 'latitude', 'longitude'
         $request->validate([
-            'carnet'    => 'required|string', // QR content = User ID
+            'carnet'    => 'required|string', // QR content
             'checkTime' => 'required|string',
             'latitude'  => 'required|numeric',
             'longitude' => 'required|numeric',
         ]);
 
-        if (!is_numeric($request->carnet)) {
+        // Extraer ID si tiene prefijo de la web (USER_QR_)
+        $carnet = $request->carnet;
+        if (str_starts_with($carnet, 'USER_QR_')) {
+            $carnet = substr($carnet, strlen('USER_QR_'));
+        }
+
+        if (!is_numeric($carnet)) {
             return response()->json([
                 'success' => false,
-                'message' => 'El código QR escaneado no es válido (debe ser el ID numérico del empleado).',
+                'message' => 'El código QR escaneado no es válido (debe ser el ID numérico del empleado o formato USER_QR_<ID>).',
             ], 400);
         }
 
-        $user = User::find($request->carnet);
+        $user = User::find($carnet);
 
         if (! $user) {
             return response()->json([

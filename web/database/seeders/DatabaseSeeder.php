@@ -15,44 +15,47 @@ class DatabaseSeeder extends Seeder
     {
         // 1. Departamentos
         $departments = [
-            ['name' => 'Tecnología'],
+            ['name' => 'Informática'],
+            ['name' => 'Contabilidad'],
             ['name' => 'Recursos Humanos'],
             ['name' => 'Ventas'],
-            ['name' => 'Operaciones'],
-            ['name' => 'Finanzas'],
+            ['name' => 'Administración'],
+            ['name' => 'Producción'],
         ];
 
         foreach ($departments as $dept) {
             Department::firstOrCreate(['name' => $dept['name']]);
         }
 
-        $tecDept  = Department::where('name', 'Tecnología')->first();
+        $infoDept = Department::where('name', 'Informática')->first();
+        $contDept = Department::where('name', 'Contabilidad')->first();
         $rrhDept  = Department::where('name', 'Recursos Humanos')->first();
         $venDept  = Department::where('name', 'Ventas')->first();
-        $opsDept  = Department::where('name', 'Operaciones')->first();
+        $admDept  = Department::where('name', 'Administración')->first();
+        $prodDept = Department::where('name', 'Producción')->first();
 
         // 2. Usuario Administrador
         $admin = User::firstOrCreate(
             ['email' => 'admin@asistencia.com'],
             [
                 'name'             => 'Administrador Principal',
-                'password'         => Hash::make('password'),
+                'password'         => Hash::make('admin123'),
                 'role'             => 'admin',
-                'department_id'    => $tecDept->id,
+                'department_id'    => $infoDept->id,
                 'residential_zone' => 'Zona Central',
             ]
         );
 
         // 3. Empleados de ejemplo
         $employees = [
-            ['name' => 'Carlos Martínez',  'email' => 'carlos@asistencia.com',  'dept' => $tecDept,  'zone' => 'Zona Norte'],
+            ['name' => 'Carlos Martínez',  'email' => 'carlos@asistencia.com',  'dept' => $infoDept,  'zone' => 'Zona Norte'],
             ['name' => 'Ana López',         'email' => 'ana@asistencia.com',     'dept' => $rrhDept,  'zone' => 'Zona Sur'],
             ['name' => 'Roberto Fuentes',   'email' => 'roberto@asistencia.com', 'dept' => $venDept,  'zone' => 'Zona Este'],
-            ['name' => 'María Hernández',   'email' => 'maria@asistencia.com',   'dept' => $opsDept,  'zone' => 'Zona Oeste'],
-            ['name' => 'Luis García',       'email' => 'luis@asistencia.com',    'dept' => $tecDept,  'zone' => 'Zona Central'],
+            ['name' => 'María Hernández',   'email' => 'maria@asistencia.com',   'dept' => $prodDept,  'zone' => 'Zona Oeste'],
+            ['name' => 'Luis García',       'email' => 'luis@asistencia.com',    'dept' => $infoDept,  'zone' => 'Zona Central'],
             ['name' => 'Sofía Ramírez',     'email' => 'sofia@asistencia.com',   'dept' => $venDept,  'zone' => 'Zona Norte'],
             ['name' => 'Diego Torres',      'email' => 'diego@asistencia.com',   'dept' => $rrhDept,  'zone' => 'Zona Sur'],
-            ['name' => 'Valentina Reyes',   'email' => 'valentina@asistencia.com','dept' => $opsDept, 'zone' => 'Zona Este'],
+            ['name' => 'Valentina Reyes',   'email' => 'valentina@asistencia.com','dept' => $admDept, 'zone' => 'Zona Este'],
         ];
 
         $createdEmployees = [];

@@ -61,8 +61,10 @@ class DashboardController extends Controller
         // Filtro: búsqueda por nombre o ID
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('users.name', 'like', "%{$search}%")
-                  ->orWhere('users.id', $search);
+                $q->where('users.name', 'like', "%{$search}%");
+                if (is_numeric($search)) {
+                    $q->orWhere('users.id', $search);
+                }
             });
         }
 

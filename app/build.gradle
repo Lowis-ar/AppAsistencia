@@ -66,10 +66,11 @@ dependencies {
     // QR Scanner (ZXing)
     implementation libs.zxing.embedded
 
-    // Google Play Services (Location + Maps)
+    // Google Play Services (Location + Maps + Coroutines)
     implementation libs.play.services.location
     implementation libs.play.services.maps
     implementation libs.maps.compose
+    implementation libs.kotlinx.coroutines.play.services
 
     // Testing
     testImplementation libs.junit

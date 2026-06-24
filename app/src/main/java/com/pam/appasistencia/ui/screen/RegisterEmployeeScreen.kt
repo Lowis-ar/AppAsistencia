@@ -24,7 +24,7 @@ fun RegisterEmployeeScreen(
     viewModel: AdminViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     var fullName by remember { mutableStateOf("") }
-    var carnet by remember { mutableStateOf("") }
+    var zone by remember { mutableStateOf("") }
     var department by remember { mutableStateOf("") }
 
     val adminState by viewModel.adminState.collectAsState()
@@ -78,9 +78,9 @@ fun RegisterEmployeeScreen(
             )
 
             OutlinedTextField(
-                value = carnet,
-                onValueChange = { carnet = it },
-                label = { Text("Carnet / QR Code") },
+                value = zone,
+                onValueChange = { zone = it },
+                label = { Text("Zona de Residencia") },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                 singleLine = true
             )
@@ -121,9 +121,9 @@ fun RegisterEmployeeScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = { viewModel.registerEmployee(fullName, carnet, department, selectedLat, selectedLng) },
+                onClick = { viewModel.registerEmployee(fullName, department, zone, selectedLat, selectedLng) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                enabled = adminState != AdminState.Loading && fullName.isNotBlank() && carnet.isNotBlank() && department.isNotBlank()
+                enabled = adminState != AdminState.Loading && fullName.isNotBlank() && zone.isNotBlank() && department.isNotBlank()
             ) {
                 if (adminState == AdminState.Loading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)

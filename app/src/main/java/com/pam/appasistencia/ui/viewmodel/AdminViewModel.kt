@@ -23,7 +23,7 @@ class AdminViewModel : ViewModel() {
     private val _adminState = MutableStateFlow<AdminState>(AdminState.Idle)
     val adminState: StateFlow<AdminState> = _adminState
 
-    fun registerEmployee(fullName: String, carnet: String, department: String, lat: Double?, lng: Double?) {
+    fun registerEmployee(fullName: String, department: String, zone: String, lat: Double?, lng: Double?) {
         val token = TokenManager.token
         if (token == null) {
             _adminState.value = AdminState.Error("No estás autenticado")
@@ -33,11 +33,12 @@ class AdminViewModel : ViewModel() {
         viewModelScope.launch {
             _adminState.value = AdminState.Loading
             try {
-                val request = EmployeeRequest(fullName, carnet, department, lat, lng)
+                val request = EmployeeRequest(fullName, department, zone, lat, lng)
                 val response = apiService.registerEmployee("Bearer $token", request)
                 
                 if (response.isSuccessful) {
-                    _adminState.value = AdminState.Success("Empleado registrado exitosamente")
+                    val body = response.body()?.toString()
+                    _adminState.value = AdminState.Success("Empleado registrado exitosamente.")
                 } else {
                     val errorBody = response.errorBody()?.string()
                     val errorMsg = try {

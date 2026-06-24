@@ -37,8 +37,9 @@ class AttendanceViewModel : ViewModel() {
                 val response = apiService.registerAttendance(request)
                 
                 if (response.isSuccessful) {
-                    val responseBody = response.body()
-                    _attendanceState.value = AttendanceState.Success("Asistencia registrada con éxito")
+                    val bodyMap = response.body() as? Map<*, *>
+                    val serverMsg = bodyMap?.get("message")?.toString() ?: "Asistencia registrada con éxito"
+                    _attendanceState.value = AttendanceState.Success(serverMsg)
                 } else {
                     val errorBody = response.errorBody()?.string()
                     val errorMsg = try {

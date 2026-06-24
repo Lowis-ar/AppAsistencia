@@ -1,9 +1,9 @@
 #!/bin/bash
 pm2 stop asistencia_api || true
 pm2 delete asistencia_api || true
-rm -rf /home/ubuntu/laravel_api
+sudo rm -rf /home/ubuntu/laravel_api
 mkdir -p /home/ubuntu/laravel_api
-unzip -q -o web.zip -d /home/ubuntu/laravel_api
+tar -xzf web.tar.gz -C /home/ubuntu/laravel_api
 cd /home/ubuntu/laravel_api/web
 cp .env.example .env
 sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' .env

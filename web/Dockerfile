@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     git \
+    nodejs \
+    npm \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd pdo pdo_pgsql pgsql
 
@@ -31,7 +33,10 @@ COPY . .
 # Instalar dependencias de Composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
+# Instalar dependencias de Node y construir assets de Vite
+RUN npm install && npm run build
+
 # Permisos
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public
 
 EXPOSE 80

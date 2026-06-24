@@ -37,8 +37,15 @@ class AdminViewModel : ViewModel() {
                 val response = apiService.registerEmployee("Bearer $token", request)
                 
                 if (response.isSuccessful) {
-                    val body = response.body()?.toString()
-                    _adminState.value = AdminState.Success("Empleado registrado exitosamente.")
+                    val bodyMap = response.body() as? Map<*, *>
+                    val dataMap = bodyMap?.get("data") as? Map<*, *>
+                    val empId = dataMap?.get("id")?.toString() ?: ""
+                    val successMsg = if (empId.isNotEmpty()) {
+                        "Empleado registrado exitosamente. ID: $empId"
+                    } else {
+                        "Empleado registrado exitosamente."
+                    }
+                    _adminState.value = AdminState.Success(successMsg)
                 } else {
                     val errorBody = response.errorBody()?.string()
                     val errorMsg = try {
